@@ -1,0 +1,302 @@
+﻿@using System.Data
+@using System.Data.SqlClient
+@using System.Data.SqlTypes
+@using AS_Store_GL.DataAccess
+@using AS_Store_GL.Models
+@model AS_Store_GL.Models.PageModel
+
+
+@{
+    ViewBag.Title = "Get_StockOrder_levelStatement";
+    Layout = null;
+
+    if (HttpContext.Current.Session["LoggedUserType"] == null)
+    {
+        Response.Redirect(Url.Action("Index", "Login"));
+    }
+
+    var LoggedUserTp = HttpContext.Current.Session["LoggedUserType"].ToString();
+    var LoggedUserStatus = HttpContext.Current.Session["LoggedUserStatus"].ToString();
+    var LoggedCompanyStatus = HttpContext.Current.Session["LoggedCompanyStatus"].ToString();
+
+    if ((LoggedUserTp == "CompanyAdmin" || LoggedUserTp == "UserAdmin" || LoggedUserTp == "User") && LoggedUserStatus == "A" && LoggedCompanyStatus == "A")
+    {
+
+    }
+    else
+    {
+        Response.Redirect(Url.Action("Index", "Logout"));
+    }
+
+    Store_GL_DbContext db = new Store_GL_DbContext();
+    var companyId = Convert.ToInt64(Model.StkTrans.COMPID);
+
+    string companyName = "", address = "", contactNo = "", address2 = "";
+    var re = from m in db.AslCompanyDbSet where m.COMPID == companyId select new { m.COMPNM, m.ADDRESS, m.CONTACTNO, m.ADDRESS2 };
+    foreach (var n in re)
+    {
+        companyName = n.COMPNM;
+        address = n.ADDRESS;
+        contactNo = n.CONTACTNO;
+        address2 = n.ADDRESS2;
+    }
+    var compNm = companyName;
+    var Address = address;
+    var contactno = contactNo;
+
+    DateTime fdate = Convert.ToDateTime(Model.Report_FromDate);
+    string ddt = fdate.ToString("dd-MMM-yyyy");
+    var fromdate = ddt;
+
+    var storeID = Convert.ToInt64(Model.STOREID);
+    string StoreName = "";
+    var store_Name = (from n in db.StkStoreDbSet where n.COMPID == companyId && n.STOREID == storeID select n).ToList();
+    foreach (var n in store_Name)
+    {
+        StoreName = n.STORENM;
+    }
+
+    TimeZoneInfo timeZoneInfo;
+    timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("Central Asia Standard Time");
+    DateTime currentDateTime = TimeZoneInfo.ConvertTime(DateTime.Now, timeZoneInfo);
+}
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <link href="~/Content/reportcss/style.css" rel="stylesheet" />
+
+</head>
+<body style=" background-color:#fafafa;">
+    <div style="width: 960px; margin: 0px auto; border: 1px solid #d3d3d3; border-radius: 5px; box-shadow: 0 0 5px rgba(0, 0, 0, 0.1); background: none repeat scroll 0 0 white;">
+        <table id="mainTable" border="0" width="100%">
+            <thead>
+                <tr>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="10%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+
+                </tr>
+                <tr style="background-color: #00689b">
+                    <td colspan="12">
+                        <h3 style="color: white;padding:4px">@compNm</h3>
+                        <p style="color:white;padding-left:4px">@Address<br /> @address2</p>
+                    </td>
+
+                    <td colspan="6" style="color: white;padding:8px" align="right">
+                        Powered By<br />Alchemy Software
+                    </td>
+
+                </tr>
+                <tr>
+                    <td colspan="12" align="left" style="padding: 4px; font-weight: bold">Stock Order Level Statement</td>
+                    <td align="right" colspan="6" style="padding:8px">Print:@currentDateTime.ToString("dd-MM-yy hh:mm tt")</td>
+                </tr>
+                <tr style="outline: thin solid">
+                    <td colspan="9" style="padding:4px;font-weight:bold">Store Name : <span style="font-weight: bold">@StoreName</span></td>
+                    <td colspan="9" style="font-weight: bold">Date : <span style="font-weight:bold">@fromdate</span></td>
+                </tr>
+
+                <tr style="background-color: #00689b; outline: thin solid">
+                    <td colspan="6" style="color: white; padding: 4px" align="center">Item Name</td>
+                    <td colspan="2" style="color: white; padding: 4px" align="center">Unit</td>
+                    <td colspan="2" style="color: white; padding: 4px" align="center">MinStockQty</td>
+                    <td colspan="2" style="color: white; padding: 4px" align="center">Qty</td>
+                    <td colspan="3" style="color: white; padding: 4px" align="center">Rate</td>
+                    <td colspan="3" style="color: white; padding: 4px" align="center">Value</td>
+                </tr>
+            </thead>
+
+            <tbody>
+                @{
+                    Decimal total_CLRT = 0, total_CLAMT = 0;
+                }
+                @{
+
+
+                    System.Data.SqlClient.SqlConnection conn1 = new System.Data.SqlClient.SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings["Store_GL_DbContext"].ToString());
+                    string query1 = string.Format(
+                        "SELECT DISTINCT CATNM FROM STK_TRANS INNER JOIN STK_ITEMMST ON STK_ITEMMST.CATID = SUBSTRING(convert(nvarchar(10),ITEMID,103),1,5) and STK_TRANS.COMPID='{0}'",
+                        companyId);
+                    System.Data.SqlClient.SqlCommand cmd1 = new System.Data.SqlClient.SqlCommand(query1, conn1);
+                    conn1.Open();
+                    SqlDataAdapter da1 = new SqlDataAdapter(cmd1);
+                    DataTable ds1 = new DataTable();
+                    da1.Fill(ds1);
+                    string CategoryName = "";
+
+                    foreach (DataRow row1 in ds1.Rows)
+                    {
+                        CategoryName = row1["CATNM"].ToString();
+
+                        System.Data.SqlClient.SqlConnection conn = new System.Data.SqlClient.SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings["Store_GL_DbContext"].ToString());
+                        string query = string.Format(
+                            @"SELECT CATNM, ITEMNM, UNIT, STKMIN, CLQTY,  cast((CASE WHEN CLQTY > 0 THEN CLRT ELSE 0 END) as decimal(18,2)) CLRT, cast((CASE WHEN CLQTY > 0 THEN CLQTY*CLRT ELSE 0 END) as decimal(18,2)) CLAMT 
+    FROM( 
+    SELECT CATNM, ITEMNM, UNIT, A.ITEMID, STKMIN, (SUM(ISNULL(INQTY,0)) - SUM(ISNULL(OUTQTY,0))) CLQTY, (CASE WHEN SUM(ISNULL(BQTY,0))!= 0 THEN SUM(ISNULL(BAMT,0))/SUM(ISNULL(BQTY,0)) ELSE 0 END) CLRT 
+    FROM( 
+    SELECT ITEMID, SUM(ISNULL(QTY,0)) INQTY, 0 OUTQTY, 0 BQTY, 0 BAMT  FROM STK_TRANS 
+    WHERE TRANSTP IN ('BUY','IRTS','IREC','ITRF') AND COMPID ='{0}' AND STORETO = '{1}' AND TRANSDT <= '{2}' GROUP BY ITEMID 
+    UNION 
+    SELECT ITEMID, 0 INQTY, SUM(ISNULL(QTY,0)) OUTQTY, 0 BQTY, 0 BAMT FROM STK_TRANS 
+    WHERE TRANSTP IN ('SALE','IRTB','IISS','ITRF') AND COMPID ='{0}' AND STOREFR = '{1}' AND TRANSDT <= '{2}' GROUP BY ITEMID 
+    UNION 
+    SELECT ITEMID, 0 INQTY, 0 OUTQTY, SUM(ISNULL(QTY,0)) BQTY, SUM(ISNULL(GROSSAMT,0)) BAMT FROM STK_TRANS 
+    WHERE TRANSTP IN ('BUY','IREC')  AND COMPID ='{0}' AND STORETO = '{1}' AND TRANSDT <= '{2}' GROUP BY ITEMID 
+    ) A LEFT OUTER JOIN STK_ITEM ON STK_ITEM.ITEMID = A.ITEMID AND COMPID ='{0}' 
+    LEFT OUTER JOIN STK_ITEMMST ON STK_ITEMMST.CATID = SUBSTRING(CONVERT(NVARCHAR(10),A.ITEMID,103),1,5) 
+    GROUP BY CATNM, ITEMNM, UNIT, A.ITEMID, STKMIN 
+    --HAVING SUM(ISNULL(BQTY,0)) != 0 
+    ) B 
+    GROUP BY CATNM, ITEMNM, UNIT, CLQTY, STKMIN, CLRT 
+    ORDER BY CATNM, ITEMNM",
+                            companyId, storeID, fdate);
+                        System.Data.SqlClient.SqlCommand cmd = new System.Data.SqlClient.SqlCommand(query, conn);
+                        conn.Open();
+                        SqlDataAdapter da = new SqlDataAdapter(cmd);
+                        DataTable ds = new DataTable();
+                        da.Fill(ds);
+
+                        string CATNM = "", ITEMNM = "";
+                        Int64 STKMIN = 0;
+                        decimal CLQTY = 0;
+                        string  CLRT = "", CLAMT = "";
+                        var UNIT = "";
+
+                        foreach (DataRow row in ds.Rows)
+                        {
+                            CATNM = row["CATNM"].ToString();
+                            if (CategoryName == CATNM)
+                            {
+                                <tr>
+                                    <td>
+                                        <br />
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" align="left" style="font-weight:bold;padding-left: 4px">
+                                        Category:
+                                    </td>
+                                    <td colspan="16" align="left" style="font-weight:bold">
+                                        @CategoryName
+                                    </td>
+
+                                </tr>
+                                break;
+                            }
+
+                        }
+
+
+                        foreach (DataRow row in ds.Rows)
+                        {
+                            CATNM = row["CATNM"].ToString();
+                            if (CategoryName == CATNM)
+                            {
+                                ITEMNM = row["ITEMNM"].ToString();
+                                UNIT = Convert.ToString(row["UNIT"]);
+                                string stokeminimum = row["STKMIN"].ToString();
+                                if (stokeminimum != "")
+                                {
+                                    STKMIN = Convert.ToInt64(row["STKMIN"]);
+                                }
+                                CLQTY = Convert.ToDecimal(row["CLQTY"]);
+                                CLRT = Convert.ToString(row["CLRT"]);
+                                CLAMT = Convert.ToString(row["CLAMT"]);
+
+
+                                string cRATE = CommainAmount.AmountwithComma(CLRT);
+                                string cAMOUNT = CommainAmount.AmountwithComma(CLAMT);
+
+                                <tr style="outline:thin solid">
+                                    <td align="left" colspan="6" style="padding-left:  4px">
+                                        @ITEMNM
+                                    </td>
+                                    <td align="center" colspan="2">
+                                        @UNIT
+                                    </td>
+                                    <td align="center" colspan="2">
+                                        @STKMIN
+                                    </td>
+                                    @if (STKMIN >= CLQTY)
+                                    {
+                                        <td align="right" colspan="2" style="color: red">
+                                            @CLQTY
+                                        </td>
+                                    }
+                                    else
+                                    {
+                                        <td align="right" colspan="2">
+                                            @CLQTY
+                                        </td>
+                                    }
+                                    <td align="right" colspan="3">
+                                        @cRATE
+                                    </td>
+                                    <td align="right" colspan="3">
+                                        @cAMOUNT
+                                    </td>
+                                </tr>
+
+                                    //total_CLRT = total_CLRT + CLRT;
+                                    //total_CLAMT = total_CLAMT + CLAMT;
+
+                            }
+                        }
+                        conn.Close();
+
+                    }
+                    conn1.Close();
+
+                }
+                @*<tr>
+                        <td colspan="2"></td>
+                        <td colspan="2"></td>
+                        <td colspan="1"></td>
+                        <td align="right" colspan="3" style="font-weight:bold">
+                            Total:
+                        </td>
+                        <td align="right" colspan="2" style="font-weight:bold">
+                            @total_BQTY
+                        </td>
+                        <td align="right" colspan="2" style="font-weight:bold">
+                            @total_SQTY
+                        </td>
+                        <td align="right" colspan="2" style="font-weight:bold">
+                            @total_INQTY
+                        </td>
+                        <td align="right" colspan="2" style="font-weight:bold">
+                            @total_OUTQTY
+                        </td>
+                        <td align="right" colspan="2" style="font-weight:bold">
+                            @{
+                                total_Balance = Opening + total_BQTY - total_SQTY + total_INQTY - total_OUTQTY;
+                            }
+                            @total_Balance
+                        </td>
+                    </tr>*@
+
+            </tbody>
+        </table>
+    </div>
+
+</body>
+</html>

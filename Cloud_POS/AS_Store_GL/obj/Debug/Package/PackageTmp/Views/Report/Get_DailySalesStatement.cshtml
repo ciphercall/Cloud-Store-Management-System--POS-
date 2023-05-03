@@ -1,0 +1,316 @@
+﻿@using System.Data
+@using System.Data.SqlClient
+@using System.Data.SqlTypes
+@using AS_Store_GL.DataAccess
+@using AS_Store_GL.Models
+@model AS_Store_GL.Models.PageModel
+
+@{
+    ViewBag.Title = "Get_DailySalesStatement";
+    Layout = null;
+    if (HttpContext.Current.Session["LoggedUserType"] == null)
+    {
+        Response.Redirect(Url.Action("Index", "Login"));
+    }
+
+    var LoggedUserTp = HttpContext.Current.Session["LoggedUserType"].ToString();
+    var LoggedUserStatus = HttpContext.Current.Session["LoggedUserStatus"].ToString();
+    var LoggedCompanyStatus = HttpContext.Current.Session["LoggedCompanyStatus"].ToString();
+
+    if ((LoggedUserTp == "CompanyAdmin" || LoggedUserTp == "UserAdmin" || LoggedUserTp == "User") && LoggedUserStatus == "A" && LoggedCompanyStatus == "A")
+    {
+
+    }
+    else
+    {
+        Response.Redirect(Url.Action("Index", "Logout"));
+    }
+
+    Store_GL_DbContext db = new Store_GL_DbContext();
+    var companyId = Convert.ToInt64(Model.StkTrans.COMPID);
+
+    string companyName = "", address = "", contactNo = "", address2 = "";
+    var re = from m in db.AslCompanyDbSet where m.COMPID == companyId select new { m.COMPNM, m.ADDRESS, m.CONTACTNO, m.ADDRESS2 };
+    foreach (var n in re)
+    {
+        companyName = n.COMPNM;
+        address = n.ADDRESS;
+        contactNo = n.CONTACTNO;
+        address2 = n.ADDRESS2;
+    }
+    var compNm = companyName;
+    var Address = address;
+    var contactno = contactNo;
+
+    DateTime fdate = Convert.ToDateTime(Model.Report_FromDate);
+    string ddt = fdate.ToString("dd-MMM-yyyy");
+    var fromdate = ddt;
+
+    DateTime tDate = Convert.ToDateTime(Model.Report_ToDate);
+    string tdd = tDate.ToString("dd-MMM-yyyy");
+    var todate = tdd;
+
+
+
+    TimeZoneInfo timeZoneInfo;
+    timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("Central Asia Standard Time");
+    DateTime currentDateTime = TimeZoneInfo.ConvertTime(DateTime.Now, timeZoneInfo);
+
+}
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <link href="~/Content/reportcss/style.css" rel="stylesheet" />
+
+</head>
+<body style=" background-color:#fafafa;">
+    <div style="width: 960px; margin: 0px auto; border: 1px solid #d3d3d3; border-radius: 5px; box-shadow: 0 0 5px rgba(0, 0, 0, 0.1); background: none repeat scroll 0 0 white;">
+        <table id="mainTable" border="0" width="100%">
+            <thead>
+                <tr>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="10%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+
+                </tr>
+                <tr style="background-color: #00689b">
+                    <td colspan="13">
+                        <h3 style="color: white;padding:4px">@compNm</h3>
+                        <p style="color:white;padding-left:4px">@Address<br /> @address2</p>
+                    </td>
+
+                    <td colspan="5" style="color: white;padding:8px" align="right">
+                        Powered By<br />Alchemy Software
+                    </td>
+
+                </tr>
+                <tr>
+                    <td colspan="12" align="left" style="padding: 4px; font-weight: bold">Daily Sales Statement</td>
+                    <td align="right" colspan="6" style="padding:8px">Print:@currentDateTime.ToString("dd-MM-yy hh:mm tt")</td>
+                </tr>
+                <tr style="outline: thin solid">
+                    <td colspan="9" style="padding:4px;font-weight:bold">From Date : <span style="font-weight: bold">@fromdate</span></td>
+                    <td colspan="9" style="font-weight: bold"> To Date : <span style="font-weight:bold">@todate</span></td>
+                </tr>
+
+                <tr style="background-color: #00689b; outline: thin solid">
+                    <td colspan="2" style="color: white; padding: 4px" align="center">Memo</td>
+                    <td colspan="1" style="color: white; padding: 4px" align="center">Qty</td>
+                    <td colspan="4" style="color: white; padding: 4px" align="center">PSNM</td>
+                    <td colspan="2" style="color: white; padding: 4px" align="center">Store</td>
+                    <td colspan="2" style="color: white; padding: 4px" align="center">Total</td>
+                    <td colspan="1" style="color: white; padding: 4px" align="center">Discount</td>
+                    <td colspan="2" style="color: white; padding: 4px" align="center">Gross</td>
+                    <td colspan="1" style="color: white; padding: 4px" align="center">Vat</td>
+                    <td colspan="1" style="color: white; padding: 4px" align="center">Charge</td>
+                    <td colspan="2" style="color: white; padding: 4px" align="center">Net</td>
+                </tr>
+            </thead>
+            <tbody>
+                @{
+                    Decimal total_QTY = 0, total_TOTAMT = 0, total_DISCAMTG = 0, total_TOTGROSS = 0, total_VATAMT = 0, total_OTCAMT = 0, total_TOTNET = 0;
+                }
+                @{
+                    System.Data.SqlClient.SqlConnection conn1 = new System.Data.SqlClient.SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings["Store_GL_DbContext"].ToString());
+                    string query1 = string.Format(
+                        "SELECT STK_TRANSMST.TRANSDT " +
+    "FROM STK_TRANSMST " +
+    "WHERE STK_TRANSMST.COMPID = '{0}' AND STK_TRANSMST.TRANSTP = 'SALE' AND TRANSDT BETWEEN '{1}' AND '{2}' " +
+    "GROUP BY STK_TRANSMST.TRANSDT " +
+    "ORDER BY TRANSDT",
+                        companyId, fdate, todate);
+                    System.Data.SqlClient.SqlCommand cmd1 = new System.Data.SqlClient.SqlCommand(query1, conn1);
+                    conn1.Open();
+                    SqlDataAdapter da1 = new SqlDataAdapter(cmd1);
+                    DataTable ds1 = new DataTable();
+                    da1.Fill(ds1);
+                    string transdt = "", transdt_convertDate = "";
+
+                    foreach (DataRow row1 in ds1.Rows)
+                    {
+                        transdt = row1["TRANSDT"].ToString();
+                        DateTime date = Convert.ToDateTime(transdt);
+                        transdt_convertDate = date.ToString("dd-MMM-yyyy");
+
+                        System.Data.SqlClient.SqlConnection conn = new System.Data.SqlClient.SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings["Store_GL_DbContext"].ToString());
+                        string query = string.Format(
+                            "SELECT STK_TRANSMST.TRANSDT, STK_TRANSMST.TRANSNO, COUNT(STK_TRANS.ITEMID) QTY, ACCOUNTNM PSNM, STORENM, TOTAMT, DISCAMTG, TOTGROSS, VATAMT, OTCAMT, TOTNET " +
+    "FROM STK_TRANSMST INNER JOIN STK_TRANS ON STK_TRANSMST.COMPID = STK_TRANS.COMPID AND STK_TRANS.TRANSTP = STK_TRANSMST.TRANSTP AND STK_TRANS.TRANSDT = STK_TRANSMST.TRANSDT AND STK_TRANS.TRANSNO = STK_TRANSMST.TRANSNO " +
+    "INNER JOIN STK_STORE ON STK_STORE.STOREID = STK_TRANSMST.STOREFR " +
+    "INNER JOIN GL_ACCHART ON GL_ACCHART.ACCOUNTCD = STK_TRANSMST.PSID " +
+    "WHERE STK_TRANSMST.COMPID = '{0}' AND STK_TRANSMST.TRANSTP = 'SALE' AND STK_TRANSMST.TRANSDT BETWEEN '{1}' AND '{2}' " +
+    "GROUP BY STK_TRANSMST.TRANSDT, STK_TRANSMST.TRANSNO, ACCOUNTNM, STORENM, TOTAMT, DISCAMTG, TOTGROSS, VATAMT, OTCAMT, TOTNET  " +
+    "ORDER BY TRANSDT, TRANSNO",
+                            companyId, fdate, todate);
+                        System.Data.SqlClient.SqlCommand cmd = new System.Data.SqlClient.SqlCommand(query, conn);
+                        conn.Open();
+                        SqlDataAdapter da = new SqlDataAdapter(cmd);
+                        DataTable ds = new DataTable();
+                        da.Fill(ds);
+
+                        string TRANSDT = "", transdt_CONVERT = "", TRANSNO = "", PSNM = "", STORENM = "";
+                        Decimal QTY = 0, TOTAMT = 0, DISCAMTG = 0, TOTGROSS = 0, VATAMT = 0, OTCAMT = 0, TOTNET = 0;
+
+                        foreach (DataRow row in ds.Rows)
+                        {
+                            TRANSDT = row["TRANSDT"].ToString();
+                            DateTime date1 = Convert.ToDateTime(TRANSDT);
+                            transdt_CONVERT = date1.ToString("dd-MMM-yyyy");
+                            if (transdt_convertDate == transdt_CONVERT)
+                            {
+                                <tr>
+                                    <td>
+                                        <br />
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="2" align="Right" style="font-weight:bold">
+                                        Date:
+                                    </td>
+                                    <td colspan="3" align="left" style="font-weight:bold">
+                                        @transdt_CONVERT
+                                    </td>
+                                </tr>
+                                break;
+                            }
+
+                        }
+
+
+                        foreach (DataRow row in ds.Rows)
+                        {
+
+                            TRANSDT = row["TRANSDT"].ToString();
+                            DateTime date1 = Convert.ToDateTime(TRANSDT);
+                            transdt_CONVERT = date1.ToString("dd-MMM-yyyy");
+
+                            if (transdt_convertDate == transdt_CONVERT)
+                            {
+                                TRANSNO = row["TRANSNO"].ToString();
+                                QTY = Convert.ToDecimal(row["QTY"]);
+                                PSNM = row["PSNM"].ToString();
+                                STORENM = row["STORENM"].ToString();
+                                TOTAMT = Convert.ToDecimal(row["TOTAMT"]);
+                                DISCAMTG = Convert.ToDecimal(row["DISCAMTG"]); ;
+                                TOTGROSS = Convert.ToDecimal(row["TOTGROSS"]); ;
+                                VATAMT = Convert.ToDecimal(row["VATAMT"]); ;
+                                OTCAMT = Convert.ToDecimal(row["OTCAMT"]); ;
+                                TOTNET = Convert.ToDecimal(row["TOTNET"]); ;
+
+                                <tr style="outline:thin solid">
+                                    <td align="center" colspan="2">
+                                        @TRANSNO
+                                    </td>
+                                    <td align="center" colspan="1">
+                                        @QTY
+                                    </td>
+                                    <td align="left" colspan="4" style="padding-left: 4px">
+                                        @PSNM
+                                    </td>
+                                    <td align="center" colspan="2">
+                                        @STORENM
+                                    </td>
+                                    <td align="right" colspan="2">
+                                        @TOTAMT
+                                    </td>
+                                    <td align="right" colspan="1">
+                                        @DISCAMTG
+                                    </td>
+                                    <td align="right" colspan="2">
+                                        @TOTGROSS
+                                    </td>
+                                    <td align="right" colspan="1">
+                                        @VATAMT
+                                    </td>
+                                    <td align="right" colspan="1">
+                                        @OTCAMT
+                                    </td>
+                                    <td align="right" colspan="2">
+                                        @TOTNET
+                                    </td>
+                                </tr>
+
+                                total_QTY = total_QTY + QTY;
+                                total_TOTAMT = total_TOTAMT + TOTAMT;
+                                total_DISCAMTG = total_DISCAMTG + DISCAMTG;
+                                total_TOTGROSS = total_TOTGROSS + TOTGROSS;
+                                total_VATAMT = total_VATAMT + VATAMT;
+                                total_OTCAMT = total_OTCAMT + OTCAMT;
+                                total_TOTNET = total_TOTNET + TOTNET;
+                            }
+                        }
+                        conn.Close();
+                    }
+                    conn1.Close();
+
+                    string S_total_TOTAMT = Convert.ToString(total_TOTAMT);
+                    string S_total_DISCAMTG = Convert.ToString(total_DISCAMTG);
+                    string S_total_TOTGROSS = Convert.ToString(total_TOTGROSS);
+                    string S_total_VATAMT = Convert.ToString(total_VATAMT);
+                    string S_total_OTCAMT = Convert.ToString(total_OTCAMT);
+                    string S_total_TOTNET = Convert.ToString(total_TOTNET);
+
+                    S_total_TOTAMT = CommainAmount.AmountwithComma(S_total_TOTAMT);
+                    S_total_DISCAMTG = CommainAmount.AmountwithComma(S_total_DISCAMTG);
+                    S_total_TOTGROSS = CommainAmount.AmountwithComma(S_total_TOTGROSS);
+                    S_total_VATAMT = CommainAmount.AmountwithComma(S_total_VATAMT);
+                    S_total_OTCAMT = CommainAmount.AmountwithComma(S_total_OTCAMT);
+                    S_total_TOTNET = CommainAmount.AmountwithComma(S_total_TOTNET);
+                }
+                <tr>
+                    <td align="right" colspan="2" style="font-weight:bold">
+                        Total:
+                    </td>
+                    <td align="center" colspan="1" style="font-weight:bold">
+                        @total_QTY
+                    </td>
+                    <td align="center" colspan="4"></td>
+                    <td align="center" colspan="2"></td>
+                    <td align="right" colspan="2" style="font-weight:bold">
+                        @S_total_TOTAMT
+                    </td>
+                    <td align="right" colspan="1" style="font-weight:bold">
+                        @S_total_DISCAMTG
+                    </td>
+                    <td align="right" colspan="2" style="font-weight:bold">
+                        @S_total_TOTGROSS
+                    </td>
+                    <td align="right" colspan="1" style="font-weight:bold">
+                        @S_total_VATAMT
+                    </td>
+                    <td align="right" colspan="1" style="font-weight:bold">
+                        @S_total_OTCAMT
+                    </td>
+                    <td align="right" colspan="2" style="font-weight:bold">
+                        @S_total_TOTNET
+                    </td>
+                </tr>
+
+            </tbody>
+        </table>
+    </div>
+
+</body>
+</html>
+

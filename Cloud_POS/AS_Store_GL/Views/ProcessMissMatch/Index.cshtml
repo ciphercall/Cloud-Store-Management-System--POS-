@@ -1,0 +1,139 @@
+﻿@using System.Web.UI.WebControls
+@using AS_Store_GL.Models
+@model AS_Store_GL.Models.PageModel
+@{
+    ViewBag.Title = "Index";
+
+    if (HttpContext.Current.Session["LoggedUserType"] == null)
+    {
+        Response.Redirect(Url.Action("Index", "Login"));
+    }
+
+    var LoggedUserTp = HttpContext.Current.Session["LoggedUserType"].ToString();
+    var LoggedUserStatus = HttpContext.Current.Session["LoggedUserStatus"].ToString();
+    var LoggedCompanyStatus = HttpContext.Current.Session["LoggedCompanyStatus"].ToString();
+
+    if ((LoggedUserTp == "CompanyAdmin" || LoggedUserTp == "UserAdmin" || LoggedUserTp == "User") && LoggedUserStatus == "A" && LoggedCompanyStatus == "A")
+    {
+
+    }
+    else
+    {
+        Response.Redirect(Url.Action("Index", "Logout"));
+    }
+
+    var LoggedCompId = HttpContext.Current.Session["loggedCompID"].ToString();
+    Store_GL_DbContext db = new Store_GL_DbContext();
+    Int64 compid = Convert.ToInt64(LoggedCompId);
+    Int64 loggedUserID = Convert.ToInt64(HttpContext.Current.Session["loggedUserID"].ToString());
+
+    var permission_Check = from m in db.AslRoleDbSet
+                           where m.COMPID == compid && m.USERID == loggedUserID
+                               && m.CONTROLLERNAME == "ProcessMissMatch" && m.ACTIONNAME == "Index"
+                           select m;
+    var Status = "";
+    foreach (var check in permission_Check)
+    {
+        Status = check.STATUS;
+    }
+
+    if (Status == "A")
+    {
+    }
+    else
+    {
+        Response.Redirect(Url.Action("Index", "Logout"));
+    }
+
+    TimeZoneInfo timeZoneInfo;
+    timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("Central Asia Standard Time");
+    DateTime currentDateTime = TimeZoneInfo.ConvertTime(DateTime.Now, timeZoneInfo);
+}
+
+<link href="~/Content/bootstrap datepicker css/datepicker.css" rel="stylesheet" />
+<link href="~/Content/bootstrap datepicker css/datepicker3.css" rel="stylesheet" />
+
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+    @Html.ValidationSummary(true)
+    
+    @Html.HiddenFor(model => model.AGlMaster.COMPID, new { id = "txtCompId", @Value = LoggedCompId })
+
+    <div id="contentHeaderBox">
+        <h1 style="padding-left:16px">Process Miss Match</h1>
+    </div>
+    <br />
+    <div class="col-md-12">
+        <div class="form-group">
+            <div class="row">
+                <div class="col-md-1">
+                    @Html.Label("Date", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-4">
+                    @Html.TextBoxFor(model => model.AGlMaster.TRANSMY, new { @class = "form-control", id = "TRANSMY", required = "required" })
+                    @*@Html.ValidationMessageFor(model => model.AGlMaster.TRANSDT, "", new { @class = "text-danger" })*@
+                </div>
+                
+                @Html.TextBoxFor(model => model.AGlMaster.INSLTUDE, new { id = "latlonPos", style = "display: none;" })
+
+                <input id="lat" type="hidden" />
+                <input id="lon" type="hidden" />
+            </div>
+            <br />
+            <div class="row">
+                <div class="col-md-1"></div>
+                <div class="col-md-2">
+                    <input id="SubmitId" type="submit" class="btn btn-info" value="Miss Match Report" name="command" formtarget="_blank"/>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+
+            $("#TRANSMY").datepicker({
+                format: "M-yy",
+                startView: "months",
+                minViewMode: "months",
+                autoclose: "true"
+            });
+        });
+    </script>
+
+    //Latitute & longitude
+    <script src="http://maps.google.com/maps/api/js?sensor=false">
+    </script>
+
+    <script language="javascript" type="text/javascript">
+        $(function () {
+            navigator.geolocation.getCurrentPosition(showPosition);
+            //navigator.geolocation.getCurrentPosition(showPosition, positionError);
+
+            function showPosition(position) {
+                var coordinates = position.coords;
+                $("#lat").val(coordinates.latitude);
+                $("#lon").val(coordinates.longitude);
+
+                $("#latlonPos").val(
+                    $("#lat").val() + "," + $("#lon").val()
+                );
+                $("#latlonRms").val(
+                    $("#lat").val() + "," + $("#lon").val()
+                );
+            }
+        });
+    </script>
+
+}
+<script src="~/Scripts/bootstrap-datepicker.js"></script>
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,235 @@
+﻿@using AS_Store_GL.DataAccess
+@using AS_Store_GL.Models
+@model AS_Store_GL.Models.DTO.Gl_StransDTO
+
+@{
+    ViewBag.Title = "GetChequePrint";
+    Layout = null;
+
+    if (HttpContext.Current.Session["LoggedUserType"] == null)
+    {
+        Response.Redirect(Url.Action("Index", "Login"));
+    }
+
+    var LoggedUserTp = HttpContext.Current.Session["LoggedUserType"].ToString();
+    var LoggedUserStatus = HttpContext.Current.Session["LoggedUserStatus"].ToString();
+    var LoggedCompanyStatus = HttpContext.Current.Session["LoggedCompanyStatus"].ToString();
+
+    if ((LoggedUserTp == "CompanyAdmin" || LoggedUserTp == "UserAdmin" || LoggedUserTp == "User") && LoggedUserStatus == "A" && LoggedCompanyStatus == "A")
+    {
+
+    }
+    else
+    {
+        Response.Redirect(Url.Action("Index", "Logout"));
+    }
+    Store_GL_DbContext db = new Store_GL_DbContext();
+    var id = Convert.ToInt64(Model.Id);
+    var companyId = Convert.ToInt64(Model.COMPID);
+    var tansDate = Model.TRANSDT;
+    var transType = Model.TRANSTP;
+
+
+    var data_find = (from n in db.GlStransDbSet where n.Gl_StransID == id && n.COMPID == companyId && n.TRANSTP == transType && n.TRANSDT == tansDate select n).ToList();
+
+    string payto = "", chequeday = "", chequeMonth = "", chequeYear = "", amount = "", amountinWords = "", InWords = "";
+    String chequeday1 = "", chequeday2 = "", chequeMonth1 = "", chequeMonth2 = "", chequeYear1 = "", chequeYear2 = "", chequeYear3 = "", chequeYear4 = "";
+    foreach (var item in data_find)
+    {
+        payto = item.CHQPAYTO;
+        if (item.CHEQUEDT != null)
+        {
+            DateTime dateTime = Convert.ToDateTime(item.CHEQUEDT);
+            chequeday = dateTime.ToString("dd");
+            chequeMonth = dateTime.ToString("MM");
+            chequeYear = dateTime.ToString("yyyy");
+
+            chequeday1 = chequeday.Substring(0, 1);
+            chequeday2 = chequeday.Substring(1, 1);
+            chequeMonth1 = chequeMonth.Substring(0, 1);
+            chequeMonth2 = chequeMonth.Substring(1, 1);
+            chequeYear1 = chequeYear.Substring(0, 1);
+            chequeYear2 = chequeYear.Substring(1, 1);
+            chequeYear3 = chequeYear.Substring(2, 1);
+            chequeYear4 = chequeYear.Substring(3, 1);
+        }
+        if (item.AMOUNT != null)
+        {
+            amount = Convert.ToString(item.AMOUNT);
+            InWords = SpellAmount.MoneyConvFn(amount);
+            amount = CommainAmount.AmountwithComma(amount);
+        }
+    }
+
+
+
+}
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    @*<link href="~/Content/reportcss/style.css" rel="stylesheet" />*@
+
+</head>
+<body style="background-color:#fafafa;">
+    <div style="width: 960px; margin: 0px auto; border: 1px solid #d3d3d3; border-radius: 5px; box-shadow: 0 0 5px rgba(0, 0, 0, 0.1); background: none repeat scroll 0 0 white;">
+        <br />
+        <div style="width: 100%; display: flex;">
+            <div style="width: 80%"></div>
+            <div style="width: 20%">
+                <table style="width: 100%">
+                    <tr>
+                        <td><br/></td>
+                    </tr>
+                    <tr>
+                        <td style="width: 12.5%; font-weight: bold">@chequeday1</td>
+                        <td style="width: 12.5%; font-weight: bold">@chequeday2</td>
+                        <td style="width: 12.5%; font-weight: bold">@chequeMonth1</td>
+                        <td style="width: 12.5%; font-weight: bold">@chequeMonth2</td>
+                        <td style="width: 12.5%; font-weight: bold">@chequeYear1</td>
+                        <td style="width: 12.5%; font-weight: bold">@chequeYear2</td>
+                        <td style="width: 12.5%; font-weight: bold">@chequeYear3</td>
+                        <td style="width: 12.5%; font-weight: bold">@chequeYear4</td>
+                    </tr>
+                </table>
+            </div>
+            @*<div style="width: 5%"></div>*@
+        </div>
+        <br/>
+        <br/>
+        <br/>
+        <div style="width: 100%; display: flex;">
+            <div style="width: 30%"></div>
+            <div style="width: 80%; font-weight: bold;">
+                @if (payto == null)
+                {
+                    <br/>
+                }
+                else
+                {
+                    @payto
+                }
+            </div>
+        </div>
+        <br/>
+        <div style="width: 100%;display: flex;">
+            <div style="width: 38%"></div>
+            <div style="width: 35%; font-weight: bold;">@InWords</div>
+            <div style="width: 12%"></div>
+            <div style="width: 15%;font-weight: bold;padding-left: 25px;">@amount</div>
+        </div>
+
+        
+        @*<table id="mainTable" border="0" width="100%">
+            <thead>
+            </thead>
+            <tbody>
+            <tr>
+                <td style="width: 84%"></td>
+                <td style="width: 2%; font-weight: bold">@chequeday1</td>
+                <td style="width: 2%; font-weight: bold">@chequeday2</td>
+                <td style="width: 2%; font-weight: bold">@chequeMonth1</td>
+                <td style="width: 2%; font-weight: bold">@chequeMonth2</td>
+                <td style="width: 2%; font-weight: bold">@chequeYear1</td>
+                <td style="width: 2%; font-weight: bold">@chequeYear2</td>
+                <td style="width: 2%; font-weight: bold">@chequeYear3</td>
+                <td style="width: 2%; font-weight: bold">@chequeYear4</td>
+            </tr>
+            <tr>
+                <td><br/></td>
+            </tr>
+            <tr>
+                <td><br/></td>
+            </tr>
+            <tr>
+                <td><br/></td>
+            </tr>
+            <tr>
+                <td><br/></td>
+            </tr>
+            <tr>
+                <td><br/></td>
+            </tr>
+            </tbody>
+        </table>
+        <table id="mainTable" border="0" width="100%">
+            <thead>
+                <tr>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                </tr>
+                @if (payto == "")
+                {
+                    <tr>
+                        <td><br /></td>
+                    </tr>
+                }
+                else
+                {
+                    <tr>
+                        <td width="30%"></td>
+                        <td width="70%" style="padding: 4px; font-weight: bold">@payto</td>
+                    </tr>
+                }
+
+            </thead>
+        </table>
+        <table id="mainTable" border="0" width="100%">
+            <thead>
+                <tr>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                </tr>
+                <tr>
+                    <td width="30%"></td>
+                    <td width="40%" style="padding: 4px; font-weight: bold">@InWords</td>
+                    <td width="30%" style="padding: 10px; font-weight: bold;text-align: right">@amount</td>
+                </tr>
+
+
+
+            </thead>
+        </table>*@
+    </div>
+
+</body>
+</html>
+

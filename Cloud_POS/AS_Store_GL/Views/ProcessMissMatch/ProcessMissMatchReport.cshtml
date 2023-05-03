@@ -1,0 +1,153 @@
+﻿@using System.Data
+@using System.Data.Entity.Core.Common.CommandTrees.ExpressionBuilder
+@using System.Data.SqlClient
+@using System.Diagnostics.Eventing.Reader
+@using AS_Store_GL.Models
+@model AS_Store_GL.Models.PageModel
+
+
+@{
+    Layout = null;
+    var LoggedCompId = Model.AGlMaster.COMPID;
+
+    Int64 compid = Convert.ToInt64(LoggedCompId);
+
+    string companyName = "", address = "", contactNo = "";
+
+    Store_GL_DbContext db = new Store_GL_DbContext();
+
+    var SelectCompanyName = from n in db.AslCompanyDbSet
+
+                            where n.COMPID == compid
+                            select new { n.COMPNM, n.ADDRESS, n.CONTACTNO };
+
+    foreach (var n in SelectCompanyName)
+    {
+        companyName = n.COMPNM;
+        address = n.ADDRESS;
+        contactNo = n.CONTACTNO;
+    }
+    var compNm = companyName;
+    var Address = address;
+    var contactno = contactNo;
+
+
+    var transmy = Model.AGlMaster.TRANSMY;
+
+
+    TimeZoneInfo timeZoneInfo;
+    timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("Central Asia Standard Time");
+    DateTime currentDateTime = TimeZoneInfo.ConvertTime(DateTime.Now, timeZoneInfo);
+
+
+}
+
+<!DOCTYPE html>
+
+<html>
+<head>
+
+    <link href="~/Content/reportcss/style.css" rel="stylesheet" />
+</head>
+<body style=" background-color:#fafafa;">
+    @*<input id="print" tabindex="1" type="button" value="Print" onclick="ClosePrint()" />*@
+
+    <div style="width: 960px; margin: 0px auto; border: 1px solid #d3d3d3; border-radius: 5px; box-shadow: 0 0 5px rgba(0, 0, 0, 0.1); background: none repeat scroll 0 0 white;">
+        <table id="mainTable" border="0" width="100%">
+            <thead>
+                <tr>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="10%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+                    <td width="5%"></td>
+
+                </tr>
+                <tr style="background-color: #00689b">
+                    <td colspan="12">
+                        <h3 style="color: white; padding: 4px">@compNm</h3>
+                        <p style="color: white; padding-left: 4px">@Address<br /> @contactno</p>
+                    </td>
+                    <td colspan="6" style="color: white; padding: 8px" align="right">
+                        Powered By<br />Alchemy Software
+                    </td>
+                </tr>
+                <tr>
+                    <td colspan="12" align="left" style="padding: 4px; font-weight: bold">Process Miss Match</td>
+                    <td align="right" colspan="6" style="padding: 8px">Print:@currentDateTime.ToString("dd-MM-yy hh:mm tt")</td>
+                </tr>
+                <tr style="outline: thin solid">
+                    <td colspan="7" style="padding: 4px; font-weight: bold">Month : <span style="font-weight: bold">@transmy</span></td>
+                    <td colspan="11" align="left" style="font-weight: bold"> </td>
+                </tr>
+
+            </thead>
+            <tbody>
+                @{
+                    System.Data.SqlClient.SqlConnection conn = new System.Data.SqlClient.SqlConnection(System.Configuration.ConfigurationManager.ConnectionStrings["Store_GL_DbContext"].ToString());
+                    string query = string.Format(
+                        @"select A.TRANSDT, SUM(ENTRY_AMOUNT) ENTRY_AMOUNT, SUM(ISNULL(PROCESS_AMOUNT,0)) PROCESS_AMOUNT, SUM(ENTRY_AMOUNT) - SUM(ISNULL(PROCESS_AMOUNT,0)) DIFF_AMT
+FROM(
+select A.TRANSDT, SUM(AMOUNT) ENTRY_AMOUNT, 0 PROCESS_AMOUNT
+from(
+select COMPID, TRANSDT,SUM(AMOUNT) AMOUNT from GL_STRANS A where A.compid='{0}' and A.TRANSMY='{1}'
+group by COMPID, A.TRANSDT
+union select COMPID, TRANSDT,(SUM(TOTNET)+SUM(CASHAMT)) AMOUNT from STK_TRANSMST A where A.compid='{0}' and transtp in ('BUY','SALE','IRTS','IRTB')
+and UPPER(SUBSTRING(CONVERT(NVARCHAR,A.TRANSDT,106),4,3)+'-'+SUBSTRING(CONVERT(NVARCHAR,A.TRANSDT,106),10,2))='{1}'
+group by COMPID, A.TRANSDT
+) A GROUP BY A.TRANSDT
+UNION
+select A.TRANSDT, 0 ENTRY_AMOUNT, SUM(ISNULL(DEBITAMT,0)) PROCESS_AMOUNT
+FROM GL_MASTER A where A.compid='{0}' and A.TRANSMY='{1}'
+GROUP BY A.TRANSDT
+) A GROUP BY A.TRANSDT", compid, transmy);
+
+                    System.Data.SqlClient.SqlCommand cmd = new System.Data.SqlClient.SqlCommand(query, conn);
+                    conn.Open();
+                    SqlDataAdapter da = new SqlDataAdapter(cmd);
+                    DataTable ds = new DataTable();
+                    da.Fill(ds);
+                    string dt = "", entry_amount = "", process_amount = "", difference = "";
+
+                    <tr style="outline: thin solid">
+                        <td colspan="4">Transaction Date</td>
+                        <td colspan="5">Entry Amount</td>
+                        <td colspan="5">Process Amount</td>
+                        <td colspan="4">Difference</td>
+                    </tr>
+
+                    foreach (DataRow row in ds.Rows)
+                    {
+                        dt = row["TRANSDT"].ToString();
+                        entry_amount = row["ENTRY_AMOUNT"].ToString();
+                        process_amount = row["PROCESS_AMOUNT"].ToString();
+                        difference = row["DIFF_AMT"].ToString();
+                        <tr style="outline: thin solid">
+                            <td colspan="4"> @dt</td>
+                            <td colspan="5">@entry_amount</td>
+                            <td colspan="5">@process_amount</td>
+                            <td colspan="4">@difference</td>
+                        </tr>
+                    }
+                    conn.Close();
+
+                }
+            </tbody>
+        </table>
+    </div>
+
+</body>
+</html>

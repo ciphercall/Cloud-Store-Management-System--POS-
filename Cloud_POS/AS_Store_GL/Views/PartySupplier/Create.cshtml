@@ -1,0 +1,412 @@
+﻿@using System.Data.SqlClient
+@using AS_Store_GL.Models
+@model  AS_Store_GL.Models.Store.STK_PS
+@{
+    ViewBag.Title = "Create";
+    if (HttpContext.Current.Session["LoggedUserType"] == null)
+    {
+        Response.Redirect(Url.Action("Index", "Login"));
+    }
+
+    var LoggedUserTp = HttpContext.Current.Session["LoggedUserType"].ToString();
+    var LoggedUserStatus = HttpContext.Current.Session["LoggedUserStatus"].ToString();
+    var LoggedCompanyStatus = HttpContext.Current.Session["LoggedCompanyStatus"].ToString();
+
+    if ((LoggedUserTp == "CompanyAdmin" || LoggedUserTp == "UserAdmin" || LoggedUserTp == "User") && LoggedUserStatus == "A" && LoggedCompanyStatus == "A")
+    {
+
+    }
+    else
+    {
+        Response.Redirect(Url.Action("Index", "Logout"));
+    }
+
+    Int64 LoggedCompId = Convert.ToInt64(System.Web.HttpContext.Current.Session["loggedCompID"]);
+    Int64 loggedUserID = Convert.ToInt64(HttpContext.Current.Session["loggedUserID"].ToString());
+    Store_GL_DbContext db = new Store_GL_DbContext();
+
+
+
+    Int64 partyId = Convert.ToInt64(LoggedCompId + "103");
+    Int64 supplierId = Convert.ToInt64(LoggedCompId + "203");
+    List<SelectListItem> ListPS = new List<SelectListItem>();
+    var result = (from n in db.GlAccharmstDbSet where n.COMPID == LoggedCompId && (n.HEADCD == partyId || n.HEADCD == supplierId) select n).OrderBy(x => x.HEADCD).ToList();
+    foreach (var n in result)
+    {
+        ListPS.Add(new SelectListItem { Text = n.HEADNM, Value = n.HEADCD.ToString() });
+    }
+
+
+
+}
+
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+    @Html.ValidationSummary(true)
+
+    @Html.HiddenFor(model => model.COMPID, new { id = "txthidden_ComapnyID", @Value = LoggedCompId })
+    @Html.HiddenFor(model => model.PSID, new { id = "txtHidden_PSID" })
+    <div id="contentHeaderBox">
+        @if (TempData["PartySupplierCreateMessage"] != null)
+        {
+            <h1 style="padding-left:16px">
+                Create Party/Supplier Basic Information&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                <span style="color: #AB0303">@TempData["PartySupplierCreateMessage"]</span>
+            </h1>
+        }
+        else
+        {
+            <h1 style="padding-left:16px">Create Party/Supplier Basic Information</h1>
+        }
+
+        @if ((LoggedUserTp == "CompanyAdmin" || LoggedUserTp == "UserAdmin" || LoggedUserTp == "User") && LoggedUserStatus == "A")
+        {
+            var createStatus = "";
+            var updateStatus = "";
+            var deleteStatus = "";
+            var status = "";
+
+            var checkPermisiion = (from m in db.AslRoleDbSet
+                                   where m.COMPID == LoggedCompId && m.USERID == loggedUserID && m.CONTROLLERNAME == "PartySupplier"
+                                   select m).ToList();
+
+
+            foreach (var x in checkPermisiion)
+            {
+                status = x.STATUS.ToString();
+                createStatus = x.INSERTR.ToString();
+                updateStatus = x.UPDATER.ToString();
+                deleteStatus = x.DELETER.ToString();
+            }
+
+
+            if (createStatus == "A")
+            {
+
+            }
+            else if (updateStatus == "A")
+            {
+                Response.Redirect("~/PartySupplier/Update");
+            }
+            else if (deleteStatus == "A")
+            {
+                Response.Redirect("~/PartySupplier/Delete");
+            }
+
+            if (createStatus == "I")
+            {
+                Response.Redirect("~/GraphView/Index");
+            }
+
+            <div class="btn-group pull-right" id="editOption">
+                <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown" data-hover="dropdown" aria-expanded="false">
+                    <i class="fa fa-cog"></i>
+                </button>
+                <ul class="dropdown-menu pull-right" style="" role="menu">
+                    @if (createStatus == 'A'.ToString() && updateStatus == 'A'.ToString() && deleteStatus == 'A'.ToString())
+                    {
+                        <li>
+                            <a href="@Url.Action("Create", "PartySupplier")"><i class="fa fa-plus"></i> Create</a>
+                        </li>
+                        <li>
+                            <a href="@Url.Action("Update", "PartySupplier")"><i class="fa fa-edit"></i> Update</a>
+                        </li>
+                        <li>
+                            <a href="@Url.Action("Delete", "PartySupplier")"><i class="fa fa-times"></i> Delete</a>
+                        </li>
+                    }
+                    else if (updateStatus == 'A'.ToString() && deleteStatus == 'A'.ToString())
+                    {
+                        <li>
+                            <a href="@Url.Action("Update", "PartySupplier")"><i class="fa fa-edit"></i> Update</a>
+                        </li>
+                        <li>
+                            <a href="@Url.Action("Delete", "PartySupplier")"><i class="fa fa-times"></i> Delete</a>
+                        </li>
+                    }
+                    else if (createStatus == 'A'.ToString() && updateStatus == 'A'.ToString())
+                    {
+                        <li>
+                            <a href="@Url.Action("Create", "PartySupplier")"><i class="fa fa-plus"></i> Create</a>
+                        </li>
+                        <li>
+                            <a href="@Url.Action("Update", "PartySupplier")"><i class="fa fa-edit"></i> Update</a>
+                        </li>
+                    }
+                    else if (createStatus == 'A'.ToString() && deleteStatus == 'A'.ToString())
+                    {
+                        <li>
+                            <a href="@Url.Action("Create", "PartySupplier")"><i class="fa fa-plus"></i> Create</a>
+                        </li>
+                        <li>
+                            <a href="@Url.Action("Delete", "PartySupplier")"><i class="fa fa-times"></i> Delete</a>
+                        </li>
+                    }
+                    else if (createStatus == 'A'.ToString())
+                    {
+                        <li>
+                            <a href="@Url.Action("Create", "PartySupplier")"><i class="fa fa-plus"></i> Create</a>
+                        </li>
+                    }
+                    else if (updateStatus == 'A'.ToString())
+                    {
+                        <li>
+                            <a href="@Url.Action("Update", "PartySupplier")"><i class="fa fa-edit"></i> Update</a>
+                        </li>
+                    }
+                    else if (deleteStatus == 'A'.ToString())
+                    {
+                        <li>
+                            <a href="@Url.Action("Delete", "PartySupplier")"><i class="fa fa-times"></i> Delete</a>
+                        </li>
+                    }
+                </ul>
+            </div>
+
+        }
+
+    </div>
+
+    <div class="col-md-12">
+        <div class="form-group">
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Group", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-2">
+                    @Html.DropDownListFor(model => model.PSGRID, ListPS, htmlAttributes: new { id = "txt_Select_PS", @class = "form-control", autofocus = "true" })
+                </div>
+                <div class="col-md-2" style="text-align: right">
+                    @Html.LabelFor(model => model.PSID, htmlAttributes: new { id = "txtLabel_Party_Supplier", @class = "control-label" })
+                </div>
+                <div class="col-md-6">
+                    @*@Html.TextBoxFor(model => model.USERPC, htmlAttributes: new { @class = "form-control", id = "txtInput_PSID"})*@
+                    <input type="text" id="txtInput_PSID" class="form-control" />
+                    @Html.ValidationMessageFor(model => model.PSID, "", new { @class = "text-danger" })
+                </div>
+            </div>
+            <br />
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Address", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-10">
+                    @Html.TextBoxFor(model => model.ADDRESS, htmlAttributes: new { @class = "form-control", maxlength = "100" })
+                    @Html.ValidationMessageFor(model => model.ADDRESS, "", new { @class = "text-danger" })
+                </div>
+            </div>
+
+            <br />
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Telephone No", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-4">
+                    @Html.TextBoxFor(model => model.TELNO, htmlAttributes: new { @class = "form-control", maxlength = "20" })
+                    @Html.ValidationMessageFor(model => model.TELNO, "", new { @class = "text-danger" })
+                </div>
+                <div class="col-md-2" style="text-align: right">
+                    @Html.Label("name", "Mobile No", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-4">
+                    @Html.TextBoxFor(model => model.MOBNO, htmlAttributes: new { @class = "form-control", pattern = "^(8{2})([0-9]{11})" })
+                    @Html.ValidationMessageFor(model => model.MOBNO, "", new { @class = "text-danger" })
+                </div>
+            </div>
+
+            <br />
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Email", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-10">
+                    @Html.TextBoxFor(model => model.EMAIL, htmlAttributes: new { @class = "form-control", maxlength = "80" })
+                    @Html.ValidationMessageFor(model => model.EMAIL, "", new { @class = "text-danger" })
+                </div>
+            </div>
+
+            <br />
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Web address", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-10">
+                    @Html.TextBoxFor(model => model.WEBID, htmlAttributes: new { @class = "form-control", maxlength = "80" })
+                    @Html.ValidationMessageFor(model => model.WEBID, "", new { @class = "text-danger" })
+                </div>
+            </div>
+
+
+            <br />
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Contact person name", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-4">
+                    @Html.TextBoxFor(model => model.CPNM, htmlAttributes: new { @class = "form-control", maxlength = "80" })
+                    @Html.ValidationMessageFor(model => model.CPNM, "", new { @class = "text-danger" })
+                </div>
+                <div class="col-md-2" style="text-align: right">
+                    @Html.Label("name", "Contact mobile no", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-4">
+                    @Html.TextBoxFor(model => model.CPCNO, htmlAttributes: new { @class = "form-control", maxlength = "11" })
+                    @Html.ValidationMessageFor(model => model.CPCNO, "", new { @class = "text-danger" })
+                </div>
+            </div>
+
+
+            <br />
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Remarks", htmlAttributes: new { @class = "control-label" })
+                </div>
+                <div class="col-md-10">
+                    @Html.TextBoxFor(model => model.REMARKS, htmlAttributes: new { @class = "form-control", maxlength = "50" })
+                    @Html.ValidationMessageFor(model => model.REMARKS, "", new { @class = "text-danger" })
+                </div>
+            </div>
+
+
+            @Html.TextBoxFor(model => model.INSLTUDE, new { id = "latlon", style = "display: none;" })
+            <input id="lat" type="hidden" />
+            <input id="lon" type="hidden" />
+
+
+            <br />
+            <div class="row">
+                <div class="col-md-2">
+                    <input type="submit" class="btn btn-primary btn-block" value="Save" name="command" />
+                </div>
+            </div>
+        </div>
+    </div>
+
+    //Latitute & longitude
+    <script src="http://maps.google.com/maps/api/js?sensor=false"></script>
+
+    <script language="javascript" type="text/javascript">
+        $(function () {
+            navigator.geolocation.getCurrentPosition(showPosition);
+            //navigator.geolocation.getCurrentPosition(showPosition, positionError);
+
+            function showPosition(position) {
+                var coordinates = position.coords;
+                $("#lat").val(coordinates.latitude);
+                $("#lon").val(coordinates.longitude);
+
+                $("#latlon").val(
+                    $("#lat").val() + "," + $("#lon").val()
+                );
+            }
+        });
+
+
+
+        $(document).ready(function () {
+
+            $('#txtLabel_Party_Supplier').text('Party Name');
+
+            $('#txt_Select_PS').change(function () {
+
+                var changedtxt = $('#txt_Select_PS option:selected').val();
+                var CompID = $('#txthidden_ComapnyID').val();
+                var party = (CompID + "103");
+                var Supplier = (CompID + "203");
+                if (changedtxt == party) {
+                    $('#txtLabel_Party_Supplier').text('Party Name');
+                } else if (changedtxt == Supplier) {
+                    $('#txtLabel_Party_Supplier').text('Supplier Name');
+                }
+            });
+
+
+            $('#txtInput_PSID').autocomplete({
+
+                source: function (request, response) {
+                    var group = $("#txt_Select_PS").val();
+                    var compID = $('#txthidden_ComapnyID').val();
+                    $.ajax({
+                        url: '/PartySupplier/TagSearch_Create',
+                        type: 'GET',
+                        cache: false,
+                        data: { character: request.term, type: group, compid: compID },
+                        dataType: 'json',
+                        success: function (data) {
+                            response($.map(data, function (item) {
+                                return {
+                                    label: item,
+                                    value: item,
+                                };
+                            }));
+                        }
+                    });
+                },
+                change: $('#txtInput_PSID').keyup(_.debounce(txtOneChanged, 500)),
+                select: function (event, ui) {
+                    $("#txtInput_PSID").val(ui.item.label);
+                    txtOneChanged();
+                },
+            });
+
+
+            function txtOneChanged() {
+                var changedText = $("#txtInput_PSID").val();
+                var type = $("#txt_Select_PS").val();
+                var compid = $('#txthidden_ComapnyID').val();
+
+                var txtBox = document.getElementById('txtInput_PSID');
+                var Hidden_PSID = document.getElementById('txtHidden_PSID');
+                $.getJSON(
+                    '/PartySupplier/keyword_Create', { "ChangedText": changedText, "Type": type, "Compid": compid },
+                    function (result) {
+                        txtBox.value = result.ACCOUNTNM;
+                        Hidden_PSID.value = result.ACCOUNTCD;
+                        document.getElementById("txtInput_PSID").focus();
+
+                    });
+                $("#txtHidden_PSID").val("");
+            }
+        });
+
+    </script>
+
+
+
+    <style type="text/css">
+        .ui-autocomplete {
+            position: absolute;
+            cursor: default;
+            background: #f0ffff;
+            max-height: 200px;
+            overflow-y: auto;
+            /* prevent horizontal scrollbar */
+            overflow-x: hidden;
+            /* add padding to account for vertical scrollbar */
+            padding-right: 20px;
+        }
+    </style>
+
+
+}
+
+@section Scripts {
+    @*@Scripts.Render("~/bundles/jquery")*@
+    @Scripts.Render("~/bundles/jqueryui")
+    @Scripts.Render("~/bundles/jqueryval")
+
+}
+
+@*@section Scripts {
+        @Scripts.Render("~/bundles/jqueryval")
+
+    }*@
+
+
+<link href="~/Content/themes/base/jquery-ui.css" rel="stylesheet" />
+<script src="~/Scripts/jquery-1.9.1.min.js"></script>
+<script src="~/Scripts/jquery-ui-1.10.4.min.js"></script>
+<script src="~/Scripts/Underscore.js"></script>
+

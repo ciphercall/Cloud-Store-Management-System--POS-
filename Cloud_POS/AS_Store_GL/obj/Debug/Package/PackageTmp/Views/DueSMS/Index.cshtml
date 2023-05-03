@@ -1,0 +1,232 @@
+﻿@using AS_Store_GL.Models
+@model AS_Store_GL.Models.PageModel
+
+@{
+    ViewBag.Title = "Index";
+    if (HttpContext.Current.Session["LoggedUserType"] == null)
+    {
+        Response.Redirect(Url.Action("Index", "Login"));
+    }
+
+    var LoggedUserTp = HttpContext.Current.Session["LoggedUserType"].ToString();
+    var LoggedUserStatus = HttpContext.Current.Session["LoggedUserStatus"].ToString();
+    var LoggedCompanyStatus = HttpContext.Current.Session["LoggedCompanyStatus"].ToString();
+
+    if ((LoggedUserTp == "CompanyAdmin" || LoggedUserTp == "UserAdmin" || LoggedUserTp == "User") && LoggedUserStatus == "A" && LoggedCompanyStatus == "A")
+    {
+
+    }
+    else
+    {
+        Response.Redirect(Url.Action("Index", "Logout"));
+    }
+
+
+    Store_GL_DbContext db = new Store_GL_DbContext();
+    Int64 companyID = Convert.ToInt64(HttpContext.Current.Session["loggedCompID"].ToString());
+    Int64 loggedUserID = Convert.ToInt64(HttpContext.Current.Session["loggedUserID"].ToString());
+
+
+    var permission_Check = from m in db.AslRoleDbSet
+                           where m.COMPID == companyID && m.USERID == loggedUserID
+                               && m.CONTROLLERNAME == "DueSMS" && m.ACTIONNAME == "Index"
+                           select m;
+    var Status = "";
+    foreach (var check in permission_Check)
+    {
+        Status = check.STATUS;
+    }
+
+    if (Status == "A")
+    {
+    }
+    else
+    {
+        Response.Redirect(Url.Action("Index", "Logout"));
+    }
+
+    TimeZoneInfo timeZoneInfo;
+    timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("Central Asia Standard Time");
+    DateTime currentDateTime = TimeZoneInfo.ConvertTime(DateTime.Now, timeZoneInfo);
+}
+
+
+<link href="~/Content/bootstrap%20datepicker%20css/datepicker.css" rel="stylesheet" />
+<link href="~/Content/bootstrap%20datepicker%20css/datepicker3.css" rel="stylesheet" />
+<script src="~/Scripts/bootstrap-datepicker.js"></script>
+
+
+
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+    @Html.ValidationSummary(true)
+
+    @Html.HiddenFor(model => model.StkTransmst.COMPID, new { @Value = companyID })
+    @Html.HiddenFor(model => model.StkTransmst.INSUSERID, new { @Value = loggedUserID })
+
+    <div id="contentHeaderBox">
+        <h1 style="padding-left: 16px;">Due-SMS</h1>
+    </div>
+    <br />
+
+    <div class="col-md-12">
+        <div class="form-group">
+            <div class="row">
+                <div class="col-md-2">
+                    @Html.Label("name", "Date:    ")
+                </div>
+                <div class="col-md-8">
+                    @if (TempData["PendingDueSMS"] != null)
+                    {
+                        PageModel pendingmodel = (PageModel)TempData["PendingDueSMS"];
+                        DateTime transDate = Convert.ToDateTime(pendingmodel.StkTransmst.TRANSDT);
+                        String date = transDate.ToString("dd-MMM-yyyy");
+                        @Html.TextBoxFor(model => model.Report_FromDate, htmlAttributes: new { id = "fromDate", @class = "form-control", @Value = date })
+                    }
+                    else
+                    {
+                         @Html.TextBoxFor(model => model.Report_FromDate, htmlAttributes: new { id = "fromDate", @class = "form-control", @Value = currentDateTime.ToString("dd-MMM-yyyy") })                   
+                    }
+                    @Html.ValidationMessageFor(model => model.Report_FromDate, "", new { @class = "text-danger" })
+                </div>
+            </div>
+            <br />
+            <div class="row">
+                <div class="col-md-2"></div>
+                <div class="col-md-8">
+                    <input type="submit" class="btn btn-success" value="Send" id="load" data-loading-text="Sending...."/>
+                </div>
+            </div>
+            <br/>
+            @if (TempData["SendingDueSMS"] != null)
+            {
+                <p>@TempData["SendingDueSMS"]</p>
+            }
+            @if (TempData["PendingDueSMS"] != null)
+            {
+                PageModel model = (PageModel)TempData["PendingDueSMS"];
+                var list  = (from m in db.CustomSmsDbSet
+                             where m.COMPID == model.StkTransmst.COMPID && m.TRANSDT == model.StkTransmst.TRANSDT
+                             && m.TRANSYY == model.StkTransmst.TRANSYY && m.STATUS == "PENDING" && m.SMSTP == "DUE"
+                             select m).ToList();
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="panel panel-danger">
+                            <div class="panel-heading">Pending SMS</div>
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <tr>
+                                        <th>
+                                            Date
+                                        </th>
+                                        <th>
+                                            Mobile Number
+                                        </th>
+                                        <th>
+                                           Status
+                                        </th>
+                                    </tr>
+
+                                    @foreach (var item in list)
+                                    {
+                                        DateTime datetime = Convert.ToDateTime(item.TRANSDT);
+                                        string transDate = datetime.ToString("dd-MMM-yyyy");
+                                        <tr>
+                                            <td>
+                                                @transDate
+                                            </td>
+                                            <td>
+                                                @Html.DisplayFor(modelItem => item.MOBNO)
+                                            </td>
+                                            <td>
+                                                @Html.DisplayFor(modelItem => item.STATUS)
+                                            </td>
+                                        </tr>
+                                    }
+
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+
+            @Html.TextBoxFor(model => model.StkTransmst.INSLTUDE, new { id = "latlon_StkTransMst", style = "display: none;" })
+            <input id="lat" type="hidden" />
+            <input id="lon" type="hidden" />
+
+        </div>
+    </div>
+
+    //Latitute & longitude
+    <script src="http://maps.google.com/maps/api/js?sensor=false"></script>
+
+    <script language="javascript" type="text/javascript">
+        $(function () {
+            navigator.geolocation.getCurrentPosition(showPosition);
+            //navigator.geolocation.getCurrentPosition(showPosition, positionError);
+
+            function showPosition(position) {
+                var coordinates = position.coords;
+                $("#lat").val(coordinates.latitude);
+                $("#lon").val(coordinates.longitude);
+
+                $("#latlon").val(
+                    $("#lat").val() + "," + $("#lon").val()
+                );
+                $("#latlon_StkTransMst").val(
+                  $("#lat").val() + "," + $("#lon").val()
+              );
+            }
+        });
+
+    </script>
+
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+            $('#fromDate').datepicker({
+                format: "dd-M-yyyy",
+                autoclose: true,
+                todayHighlight: true,
+                showOnFocus: true,
+            }).on('show', function (e) {
+                if (e.date) {
+                    $(this).data('stickyDate', e.date);
+                }
+                else {
+                    $(this).data('stickyDate', null);
+                }
+            }).on('hide', function (e) {
+                var stickyDate = $(this).data('stickyDate');
+
+                if (!e.date && stickyDate) {
+                    $(this).datepicker('setDate', stickyDate);
+                    $(this).data('stickyDate', null);
+                }
+                document.getElementById("toDate").focus();
+            });
+
+
+            $('.btn').on('click', function () {
+                var $this = $(this);
+                $this.button('loading');
+                setTimeout(function () {
+                    $this.button('reset');
+                }, 8000);
+            });
+
+        });
+
+
+    </script>
+
+}
+
+@section Scripts {
+    @Scripts.Render("~/bundles/jqueryval")
+}
+
+
+

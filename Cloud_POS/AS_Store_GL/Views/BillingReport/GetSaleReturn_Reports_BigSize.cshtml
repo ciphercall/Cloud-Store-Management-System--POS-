@@ -1,0 +1,305 @@
+﻿@using AS_Store_GL.Models
+@model AS_Store_GL.Models.PageModel
+
+@{
+    ViewBag.Title = "GetSaleReturn_Reports_BigSize";
+    Layout = null;
+
+    if (HttpContext.Current.Session["LoggedUserType"] == null)
+    {
+        Response.Redirect(Url.Action("Index", "Login"));
+    }
+
+    var LoggedUserTp = HttpContext.Current.Session["LoggedUserType"].ToString();
+    var LoggedUserStatus = HttpContext.Current.Session["LoggedUserStatus"].ToString();
+    var LoggedCompanyStatus = HttpContext.Current.Session["LoggedCompanyStatus"].ToString();
+
+    if ((LoggedUserTp == "CompanyAdmin" || LoggedUserTp == "UserAdmin" || LoggedUserTp == "User") && LoggedUserStatus == "A" && LoggedCompanyStatus == "A")
+    {
+
+    }
+    else
+    {
+        Response.Redirect(Url.Action("Index", "Logout"));
+    }
+
+    Store_GL_DbContext db = new Store_GL_DbContext();
+
+    var companyId = Convert.ToInt64(Model.StkTrans.COMPID);
+    var MemoNo = Convert.ToInt64(Model.StkTrans.TRANSNO);
+    var TransYear = Convert.ToInt64(Model.StkTransmst.TRANSYY);
+    var TransType = Model.StkTransmst.TRANSTP.ToString();
+    var storeToName = "";
+    var PartyName = "";
+
+    string companyName = "", address = "", address2 = "", contactNo = "";
+    var SelectUserName = from m in db.AslCompanyDbSet where m.COMPID == companyId select new { m.COMPNM, m.ADDRESS, m.CONTACTNO, m.ADDRESS2 };
+    foreach (var n in SelectUserName)
+    {
+        companyName = n.COMPNM;
+        address = n.ADDRESS;
+        address2 = n.ADDRESS2;
+        contactNo = n.CONTACTNO;
+    }
+    var compNm = companyName;
+    var Address = address;
+    var contactno = contactNo;
+
+
+
+    Decimal discountAmount = 0, totalGrossAmount = 0, vatAmount = 0, serviceCharge = 0, TotalNet = 0, CashAmount = 0, CreditAmount = 0;
+    Int64 StoreToId = 0, PartyNameID = 0;
+    var StkTransMstfound = from n in db.StkTransmstDbSet
+                           where n.COMPID == companyId && n.TRANSNO == MemoNo && n.TRANSYY == TransYear && n.TRANSTP == TransType
+                           select new { n.STORETO, n.PSID, n.DISCAMTG, n.TOTGROSS, n.VATAMT, n.OTCAMT, n.TOTNET, n.CASHAMT, n.CREDITAMT };
+
+    foreach (var a in StkTransMstfound)
+    {
+        StoreToId = Convert.ToInt64(a.STORETO);
+        PartyNameID = Convert.ToInt64(a.PSID);
+        discountAmount = Convert.ToDecimal(a.DISCAMTG);
+        totalGrossAmount = Convert.ToDecimal(a.TOTGROSS);
+        vatAmount = Convert.ToDecimal(a.VATAMT);
+        serviceCharge = Convert.ToDecimal(a.OTCAMT);
+        TotalNet = Convert.ToDecimal(a.TOTNET);
+        CashAmount = Convert.ToDecimal(a.CASHAMT);
+        CreditAmount = Convert.ToDecimal(a.CREDITAMT);
+    }
+
+
+
+
+    var findPartyId = from m in db.StkStoreDbSet where m.COMPID == companyId && m.STOREID == StoreToId select new { m.STORENM };
+    foreach (var v in findPartyId)
+    {
+        storeToName = v.STORENM.ToString();
+    }
+    var findStoreID = from m in db.GlAcchartDbSet where m.ACCOUNTCD == PartyNameID && m.COMPID == companyId select new { m.ACCOUNTNM };
+    foreach (var v in findStoreID)
+    {
+        PartyName = v.ACCOUNTNM.ToString();
+    }
+
+
+
+
+
+
+    TimeZoneInfo timeZoneInfo;
+    timeZoneInfo = TimeZoneInfo.FindSystemTimeZoneById("Central Asia Standard Time");
+    DateTime currentDateTime = TimeZoneInfo.ConvertTime(DateTime.Now, timeZoneInfo);
+
+    Decimal totalGross = 0;
+
+
+    var StkTransList = (from StkTrans in db.StkTransDbSet
+                        join StkItem in db.StkItemDbSet on StkTrans.ITEMID equals StkItem.ITEMID
+                        where StkTrans.COMPID == StkItem.COMPID && StkTrans.COMPID == companyId && StkTrans.TRANSYY == TransYear && StkTrans.TRANSNO == MemoNo
+                        && StkTrans.TRANSTP == TransType
+                        orderby StkTrans.ITEMSL
+                        select new
+                        {
+                            StkTrans.TRANSDT,
+                            StkTrans.TRANSNO,
+                            StkItem.ITEMNM,
+                            StkItem.ITEMID,
+                            StkTrans.QTY,
+                            StkTrans.RATE,
+                            StkTrans.AMOUNT,
+                            StkTrans.DISCAMT,
+                            StkTrans.GROSSAMT
+                        }).ToList();
+}
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+    <link href="~/Content/reportcss/style.css" rel="stylesheet" />
+
+</head>
+<body style="background-color:#fafafa;">
+    <div style="width: 960px; margin: 0px auto; border: 1px solid #d3d3d3; border-radius: 5px; box-shadow: 0 0 5px rgba(0, 0, 0, 0.1); background: none repeat scroll 0 0 white;">
+        <table id="mainTable" border="0" width="100%">
+            <thead>
+                <tr>
+                    <td width="10%"></td>
+                    <td width="10%"></td>
+                    <td width="10%"></td>
+                    <td width="10%"></td>
+                    <td width="10%"></td>
+                    <td width="10%"></td>
+                    <td width="10%"></td>
+                    <td width="10%"></td>
+                    <td width="20%"></td>
+                </tr>
+
+                <tr style="background-color: #d6d3d3">
+                    @*#00689b*@
+                    @if (companyId == 101)
+                    {
+                        <td colspan="1" style="background-color: white;">
+                            <img src="~/Content/Company-Logo/MILLENNIUM-TEA-TRADERS.jpg" width="100" height="70" alt="" />
+                        </td>
+                        <td colspan="7">
+                            <h3 style="color: black; padding: 4px">@compNm</h3>
+                            <p style="color: black; padding-left: 4px">@Address<br /> @address2</p>
+                        </td>
+                        <td colspan="2" style="color: black; padding: 8px" align="right">
+                            Powered By<br />Alchemy Software
+                        </td>
+                    }
+                    else
+                    {
+                        <td colspan="7">
+                            <h3 style="color: black; padding: 4px">@compNm</h3>
+                            <p style="color: black; padding-left: 4px">@Address<br /> @address2</p>
+                        </td>
+                        <td colspan="3" style="color: black; padding: 8px" align="right">
+                            Powered By<br />Alchemy Software
+                        </td>
+                    }
+
+                </tr>
+
+                <tr>
+                    <td colspan="7" align="left" style="padding: 4px; font-weight: bold">Sales Return Memo</td>
+                    <td align="right" colspan="3" style="padding:8px">Print:@currentDateTime.ToString("dd-MM-yy hh:mm tt")</td>
+                </tr>
+
+                <tr style="outline: thin solid">
+                    <td colspan="1" align="right">Date:</td>
+                    <td colspan="3" style="font-weight: bold">@ViewBag.Date</td>
+                    <td colspan="1" align="right">Invoice:</td>
+                    <td colspan="5" style="font-weight: bold">@ViewBag.InvoiceNo</td>
+                    @*<td colspan="5" style="padding:4px"> <span style="font-weight: bold"></span></td>*@
+                </tr>
+                <tr style="outline: thin solid">
+                    <td colspan="1" align="right">Store To:</td>
+                    <td colspan="3" style="font-weight: bold">@storeToName</td>
+                    <td colspan="1" align="right">Party:</td>
+                    <td colspan="5" style="font-weight: bold">@PartyName</td>
+                    @*<td colspan="5" style="padding:4px"> <span style="font-weight: bold"></span></td>*@
+                </tr>
+
+                <tr style="background-color: #d6d3d3; outline: thin solid">
+                    @*#00689b*@
+                    <td colspan="2" style="color: black; padding: 4px">Item Name</td>
+                    <td colspan="1" style="color: black; padding: 4px">Qty</td>
+                    <td colspan="1" style="color: black; padding: 4px">Rate</td>
+                    <td colspan="2" style="color: black; padding: 4px">Amount</td>
+                    <td colspan="2" style="color: black; padding: 4px">Discount</td>
+                    <td colspan="2" style="color: black; padding: 4px">Gross</td>
+                </tr>
+            </thead>
+
+            <tbody>
+                @foreach (var item in StkTransList)
+                {
+                    <tr>
+                        <td colspan="2" style="padding:4px">
+                            @Html.DisplayFor(modelItem => item.ITEMNM)
+                        </td>
+                        <td colspan="1" style="padding:4px">
+                            @Html.DisplayFor(modelItem => item.QTY)
+                        </td>
+                        <td colspan="1" align="center" style="padding:4px">
+                            @Html.DisplayFor(modelItem => item.RATE)
+                        </td>
+                        <td colspan="2" align="right" style="padding:4px">
+                            @Html.DisplayFor(modelItem => item.AMOUNT)
+                        </td>
+                        <td colspan="2" align="right" style="padding:4px">
+                            @Html.DisplayFor(modelItem => item.DISCAMT)
+                        </td>
+                        <td colspan="2" align="right" style="padding:4px">
+                            @Html.DisplayFor(modelItem => item.GROSSAMT)
+                        </td>
+                    </tr>
+                    totalGross = totalGross + Convert.ToDecimal(item.GROSSAMT);
+                }
+
+
+                <tr>
+
+                    <td align="right" colspan="8"><strong>Total:</strong></td>
+                    <td align="right" colspan="2" style="font-weight:bold">
+                        @totalGross
+                    </td>
+                </tr>
+                <tr>
+
+                    <td align="right" colspan="8"><strong>Discount:</strong></td>
+                    <td align="right" colspan="2" style="font-weight:bold">
+                        @discountAmount
+                    </td>
+                </tr>
+                <tr>
+
+                    <td align="right" colspan="8"><strong>Gross:</strong></td>
+                    <td align="right" colspan="2" style="font-weight:bold">
+                        @totalGrossAmount
+                    </td>
+                </tr>
+                <tr>
+
+                    <td align="right" colspan="8"><strong>Vat:</strong></td>
+                    <td align="right" colspan="2" style="font-weight:bold">
+                        @vatAmount
+                    </td>
+                </tr>
+                <tr>
+
+                    <td align="right" colspan="8"><strong>Service Charge:</strong></td>
+                    <td align="right" colspan="2" style="font-weight:bold">
+                        @serviceCharge
+                    </td>
+                </tr>
+                <tr>
+
+                    <td align="right" colspan="8"><strong>Total Amount:</strong></td>
+                    <td align="right" colspan="2" style="font-weight:bold">
+                        @TotalNet
+                    </td>
+                </tr>
+                <tr>
+
+                    <td align="right" colspan="8"><strong>Cash Amount:</strong></td>
+                    <td align="right" colspan="2" style="font-weight:bold">
+                        @CashAmount
+                    </td>
+                </tr>
+                <tr>
+
+                    <td align="right" colspan="8"><strong>Credit Amount:</strong></td>
+                    <td align="right" colspan="2" style="font-weight:bold">
+                        @CreditAmount
+                    </td>
+                </tr>
+
+                @{
+                    string amount = "", InWords = "";
+                    amount = Convert.ToString(CashAmount);
+                    InWords = SpellAmount.MoneyConvFn(amount);
+                }
+                <tr>
+                    <td></td>
+                </tr>
+                <tr style="outline: thin solid">
+                    <td colspan="10" align="left" style="padding-left:8px">In Words : <strong>@InWords</strong></td>
+                </tr>
+
+
+
+                <tr>
+                    <td align="center" colspan="10"><strong>THANK YOU</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</body>
+</html>

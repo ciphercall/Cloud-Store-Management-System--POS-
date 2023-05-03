@@ -1,0 +1,188 @@
+﻿@using AS_Store_GL.Models
+@model AS_Store_GL.Models.STK_STORE
+
+@{
+    ViewBag.Title = "Index";
+
+    if (HttpContext.Current.Session["LoggedUserType"] == null)
+    {
+        Response.Redirect(Url.Action("Index", "Login"));
+    }
+
+    var LoggedUserTp = HttpContext.Current.Session["LoggedUserType"].ToString();
+    var LoggedUserStatus = HttpContext.Current.Session["LoggedUserStatus"].ToString();
+    var LoggedCompanyStatus = HttpContext.Current.Session["LoggedCompanyStatus"].ToString();
+
+    if ((LoggedUserTp == "CompanyAdmin" || LoggedUserTp == "UserAdmin" || LoggedUserTp == "User") && LoggedUserStatus == "A" && LoggedCompanyStatus == "A")
+    {
+
+    }
+    else
+    {
+        Response.Redirect(Url.Action("Index", "Logout"));
+    }
+
+    var LoggedCompId = Convert.ToInt64(HttpContext.Current.Session["loggedCompID"].ToString());
+    Store_GL_DbContext db = new Store_GL_DbContext();
+}
+
+
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+    @Html.ValidationSummary(true)
+
+  
+    <div id="contentHeaderBox">
+        <h1 style="padding-left: 16px;">Store Information</h1>
+    </div>
+    <br />
+
+    <div class="col-md-12">
+        <div class="form-group">
+            
+
+            <div class="row">
+                @Html.HiddenFor(model => model.COMPID, new { id = "txtCompId", @Value = LoggedCompId })
+                @Html.HiddenFor(model => model.STOREID, new { id = "txtStoreId" })
+                
+                <div class="col-md-4">
+                    <span> <b>@Html.Label("name", "Store Name", htmlAttributes: new { @class = "control-label" })</b></span>
+                    @Html.TextBoxFor(model => model.STORENM, new { @class = "form-control input-sm", id = "txtItemNm", autofocus = true })
+                    @Html.ValidationMessageFor(model => model.STORENM, "", new { @class = "text-danger" })
+                </div>
+
+                <div class="col-md-4">
+                    <span>  @Html.Label("name", "Stores ID", htmlAttributes: new { @class = "control-label" })</span>
+                    @Html.TextBoxFor(model => model.STORESID, new { @class = "form-control input-sm", id = "txtBrand" })
+                </div>
+                <div class="col-md-3">
+                    <span>  @Html.Label("name", "Remarks", htmlAttributes: new { @class = "control-label" })</span>
+                    @Html.TextAreaFor(model => model.REMARKS, new { @class = "form-control input-sm", id = "txtUnit" })
+                </div>
+                @if (TempData["ShowUpdateButton"] != null)
+                {
+                    <div class="col-md-1" style="padding-left: 0px">
+                        <input type="submit" class="btn btn-info input-sm" value="Update" id="btnUpdate" name="command" style="margin-top:25px; margin-left:5px; padding-bottom: 25px" />
+                    </div>
+                }
+
+                else
+                {
+                    <div class="col-md-1" @*style="padding-left: 0px"*@>
+                        <input type="submit" class="btn btn-info input-sm" value="Add" id="btnAdd" name="command" style="margin-top:25px; margin-left:5px;padding-bottom: 25px" />
+                    </div>
+                }
+                
+                
+
+                @Html.TextBoxFor(model => model.INSLTUDE, new { id = "latlonPos", style = "display: none;" })
+                <input id="lat" type="hidden" />
+                <input id="lon" type="hidden" />
+            </div>
+            
+            @if (TempData["message"] != null)
+            {
+                <div class="text-center">
+                    <h5 style="color: #BD7F1C">@TempData["message"] </h5>
+                </div>
+            }
+            
+
+            <br/>
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="panel panel-success">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <tr>
+                                    <td>
+                                        <h6>Store Name</h6>
+                                    </td>
+                                    <td>
+                                        <h6>Stores ID</h6>
+                                    </td>
+                                    <td>
+                                        <h6>Remarks</h6>
+                                    </td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                                @{
+    var res = db.StkStoreDbSet.Where(d => d.COMPID == LoggedCompId);
+                                }
+                                @foreach (var item in res)
+                                {
+                                    <tr>
+                                        @Html.HiddenFor(model => item.STK_STORE_ID, new { style = "width:3em;", @readonly = "readonly" })
+                                        @Html.HiddenFor(model => item.COMPID, new { style = "width:3em;", @readonly = "readonly" })
+                                        @Html.HiddenFor(model => item.STOREID, new { style = "width:3em;", @readonly = "readonly" })
+
+                                        <td>
+                                            @*@Html.TextBoxFor(model => item.ITEMNM, new { style = "width:10em;", id = "txtItemNm", @readonly = "readonly" })*@
+                                            @Html.DisplayFor(model => item.STORENM, new { style = "width:10em;", id = "txtItemNm", @readonly = "readonly" })
+                                        </td>
+                                        <td>
+                                            @*@Html.TextBoxFor(model => item.BRAND, new { style = "width:6em;", id = "txtBrand", @readonly = "readonly" })*@
+                                            @Html.DisplayFor(model => item.STORESID, new { style = "width:6em;", id = "txtBrand", @readonly = "readonly" })
+                                        </td>
+                                        <td>
+                                            @*@Html.TextBoxFor(model => item.UNIT, new { style = "width:2em;", id = "txtUnit", @readonly = "readonly" })*@
+                                            @Html.DisplayFor(model => item.REMARKS, new { style = "width:2em;", id = "txtUnit", @readonly = "readonly" })
+                                        </td>
+                                      
+                                        <td>
+                                            <span>
+                                                <a href="@Url.Action("Update", new { ID = item.STK_STORE_ID, cid = item.COMPID, storId = item.STOREID })" class="btn btn-sm btn-info">
+                                                    <span class="glyphicon glyphicon-pencil"></span>
+                                                </a>
+                                            </span>
+
+
+                                        </td>
+                                        <td>
+                                            <span>
+                                                <a href="@Url.Action("Delete", new { ID = item.STK_STORE_ID, cid = item.COMPID, storId = item.STOREID })" class="btn btn-sm btn-danger">
+                                                    <span class="glyphicon glyphicon-remove"></span>
+                                                </a>
+                                            </span>
+
+                                        </td>
+
+                                    </tr>                                                      
+                                }
+
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    
+    
+    //Latitute & longitude
+    <script src="http://maps.google.com/maps/api/js?sensor=false">
+    </script>
+
+    <script language="javascript" type="text/javascript">
+        $(function () {
+            navigator.geolocation.getCurrentPosition(showPosition);
+            //navigator.geolocation.getCurrentPosition(showPosition, positionError);
+
+            function showPosition(position) {
+                var coordinates = position.coords;
+                $("#lat").val(coordinates.latitude);
+                $("#lon").val(coordinates.longitude);
+
+                $("#latlonPos").val(
+                    $("#lat").val() + "," + $("#lon").val()
+                );
+                $("#latlonRms").val(
+                    $("#lat").val() + "," + $("#lon").val()
+                );
+            }
+        });
+    </script>
+}
